@@ -26,7 +26,7 @@ class Widget_Themes_List extends Typecho_Widget
      */
     protected function getThemes()
     {
-        return glob(__TYPECHO_ROOT_DIR__ . __TYPECHO_THEME_DIR__ . '/*');
+        return glob(__TYPECHO_ROOT_DIR__ . __TYPECHO_THEME_DIR__ . '/*', GLOB_ONLYDIR);
     }
 
     /**
@@ -53,8 +53,6 @@ class Widget_Themes_List extends Typecho_Widget
 
         if ($themes) {
             $options = $this->widget('Widget_Options');
-            $siteUrl = $options->siteUrl;
-            $adminUrl = $options->adminUrl;
             $activated  = 0;
             $result = array();
 
@@ -69,7 +67,7 @@ class Widget_Themes_List extends Typecho_Widget
                     }
 
                     $screen = array_filter(glob($theme . '/*'), function ($path) {
-                        return preg_match("/\.(jpg|png|gif|bmp|jpeg)$/i", $path);
+                        return preg_match("/screenshot\.(jpg|png|gif|bmp|jpeg)$/i", $path);
                     });
 
                     if ($screen) {

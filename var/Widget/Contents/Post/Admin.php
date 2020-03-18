@@ -52,7 +52,11 @@ class Widget_Contents_Post_Admin extends Widget_Abstract_Contents
      */
     protected function ___hasSaved()
     {
-        $savedPost = $this->db->fetchRow($this->db->select('cid', 'modified')
+        if (in_array($this->type, array('post_draft', 'page_draft'))) {
+            return true;
+        }
+
+        $savedPost = $this->db->fetchRow($this->db->select('cid', 'modified', 'status')
         ->from('table.contents')
         ->where('table.contents.parent = ? AND (table.contents.type = ? OR table.contents.type = ?)',
             $this->cid, 'post_draft', 'page_draft')
@@ -80,6 +84,27 @@ class Widget_Contents_Post_Admin extends Widget_Abstract_Contents
         }
 
         throw new Typecho_Widget_Exception(_t('用户不存在'), 404);
+    }
+
+    /**
+     * 重载过滤函数
+     *
+     * @param array $value
+     * @return array
+     */
+    public function filter(array $value)
+    {
+        $value = parent::filter($value);
+
+        if (!empty($value['parent'])) {
+            $parent = $this->db->fetchObject($this->select()->where('cid = ?', $value['parent']));
+
+            if (!empty($parent)) {
+                $value['commentsNum'] = $parent->commentsNum;
+            }
+        }
+
+        return $value;
     }
 
     /**
@@ -148,7 +173,7 @@ class Widget_Contents_Post_Admin extends Widget_Abstract_Contents
         $this->_countSql = clone $select;
 
         /** 提交查询 */
-        $select->order('table.contents.created', Typecho_Db::SORT_DESC)
+        $select->order('table.contents.cid', Typecho_Db::SORT_DESC)
         ->page($this->_currentPage, $this->parameter->pageSize);
 
         $this->db->fetchAll($select, array($this, 'push'));

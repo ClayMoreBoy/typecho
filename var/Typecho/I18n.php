@@ -8,45 +8,6 @@
  */
 
 /**
- * I18n function
- *
- * @param string $string 需要翻译的文字
- * @return string
- */
-function _t($string) {
-    if (func_num_args() <= 1) {
-        return Typecho_I18n::translate($string);
-    } else {
-        $args = func_get_args();
-        array_shift($args);
-        return vsprintf(Typecho_I18n::translate($string), $args);
-    }
-}
-
-/**
- * I18n function, translate and echo
- *
- * @param string $string 需要翻译并输出的文字
- * @return void
- */
-function _e() {
-    $args = func_get_args();
-    echo call_user_func_array('_t', $args);
-}
-
-/**
- * 针对复数形式的翻译函数
- *
- * @param string $single 单数形式的翻译
- * @param string $plural 复数形式的翻译
- * @param integer $number 数字
- * @return string
- */
-function _n($single, $plural, $number) {
-    return str_replace('%d', $number, Typecho_I18n::ngettext($single, $plural, $number));
-}
-
-/**
  * 国际化字符翻译
  *
  * @package I18n
@@ -92,7 +53,7 @@ class Typecho_I18n
     public static function translate($string)
     {
         self::init();
-        return self::$_lang ? self::$_loaded->translate($string) : $string;
+        return self::$_loaded ? self::$_loaded->translate($string) : $string;
     }
 
     /**
@@ -106,7 +67,7 @@ class Typecho_I18n
     public static function ngettext($single, $plural, $number)
     {
         self::init();
-        return self::$_lang ? self::$_loaded->ngettext($single, $plural, $number) : ($number > 1 ? $plural : $single);
+        return self::$_loaded ? self::$_loaded->ngettext($single, $plural, $number) : ($number > 1 ? $plural : $single);
     }
 
     /**

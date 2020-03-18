@@ -395,8 +395,7 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
                 'dateCreated'            => new IXR_Date($this->options->timezone + $pages->created),
                 'userid'                 => $pages->authorId,
                 'page_id'                => intval($pages->cid),
-                /** todo:此处有疑问 */
-                'page_status'            => $this->typechoToWordpressStatus($pages->status, 'page'),
+                'page_status'            => $this->typechoToWordpressStatus(($pages->hasSaved || 'page_draft' == $pages->type) ? 'draft' : $pages->status, 'page'),
                 'description'            => $excerpt,
                 'title'                  => $pages->title,
                 'link'                   => $pages->permalink,
@@ -485,8 +484,8 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
      */
     public function wpEditPage($blogId, $pageId, $userName, $password, $content, $publish)
     {
-        $content['type'] = 'page';
-        $this->mwEditPost($blogId, $pageId, $userName, $password, $content, $publish);
+        $content['post_type'] = 'page';
+        $this->mwEditPost($pageId, $userName, $password, $content, $publish);
     }
 
 
@@ -1053,8 +1052,7 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
         
         $input = array();
         if (!empty($struct['status'])) {
-            $input['status'] = 'hold' == $input['status'] ? $input['status'] : 
-                $this->wordpressToTypechoStatus($struct['status']);
+            $input['status'] = $this->wordpressToTypechoStatus($struct['status'], 'comment');
         } else {
             $input['__typecho_all_comments'] = 'on';
         }
@@ -1440,7 +1438,7 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
         /** 调整状态 */
         if (isset($content["{$type}_status"])) {
             $status = $this->wordpressToTypechoStatus($content["{$type}_status"], $type);
-            
+            $input['visibility'] = isset($content["visibility"]) ? $content["visibility"] : $status;
             if ('publish' == $status || 'waiting' == $status || 'private' == $status) {
                 $input['do'] = 'publish';
                 
@@ -1605,7 +1603,7 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
                     'wp_author_id'           => $posts->authorId,
                     'wp_author_display_name' => $posts->author->screenName,
                     'date_created_gmt'       => new IXR_Date($posts->created),
-                    'post_status'            => $this->typechoToWordpressStatus($posts->status, 'post'),
+                    'post_status'            => $this->typechoToWordpressStatus(($posts->hasSaved || 'post_draft' == $posts->type) ? 'draft' : $posts->status, 'post'),
                     'custom_fields'          => array(),
                     'wp_post_format'         => 'standard',
                     'date_modified'          => new IXR_Date($this->options->timezone + $posts->modified),
@@ -2057,6 +2055,16 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
         $pathInfo = Typecho_Common::url(substr($target, strlen($this->options->index)), '/');
         $post = Typecho_Router::match($pathInfo);
 
+        /** 检查源地址是否合法 */
+        $params = parse_url($source);
+        if (false === $params || !in_array($params['scheme'], array('http', 'https'))) {
+            return new IXR_Error(16, _t('源地址服务器错误'));
+        }
+
+        if (!Typecho_Common::checkSafeHost($params['host'])) {
+            return new IXR_Error(16, _t('源地址服务器错误'));
+        }
+
         /** 这样可以得到cid或者slug*/
         if (!($post instanceof Widget_Archive) || !$post->have() || !$post->is('single')) {
             return new IXR_Error(33, _t('这个目标地址不存在'));
@@ -2134,10 +2142,10 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
 
                     $pingback = array(
                         'cid'       =>  $post->cid,
-                        'created'   =>  $this->options->gmtTime,
+                        'created'   =>  $this->options->time,
                         'agent'     =>  $this->request->getAgent(),
                         'ip'        =>  $this->request->getIp(),
-                        'author'    =>  $finalTitle,
+                        'author'    =>  Typecho_Common::subStr($finalTitle, 0, 150, '...'),
                         'url'       =>  Typecho_Common::safeUrl($source),
                         'text'      =>  $finalText,
                         'ownerId'   =>  $post->author->uid,
@@ -2193,6 +2201,10 @@ class Widget_XmlRpc extends Widget_Abstract_Contents implements Widget_Interface
      */
     public function action()
     {
+        if (0 == $this->options->allowXmlRpc) {
+            throw new Typecho_Widget_Exception(_t('请求的地址不存在'), 404);
+        }
+
         if (isset($this->request->rsd)) {
             echo
 <<<EOF
@@ -2250,10 +2262,7 @@ EOF;
 EOF;
         } else {
 
-
-
-            /** 直接把初始化放到这里 */
-            new IXR_Server(array(
+            $api = array(
                 /** WordPress API */
                 'wp.getPage'                => array($this, 'wpGetPage'),
                 'wp.getPages'               => array($this, 'wpGetPages'),
@@ -2323,11 +2332,18 @@ EOF;
 
                 /** PingBack */
                 'pingback.ping'             => array($this,'pingbackPing'),
-                'pingback.extensions.getPingbacks' => array($this,'pingbackExtensionsGetPingbacks'),
+                // 'pingback.extensions.getPingbacks' => array($this,'pingbackExtensionsGetPingbacks'),
                 
                 /** hook after */
                 'hook.afterCall'            => array($this, 'hookAfterCall'),
-            ));
+            );
+
+            if (1 == $this->options->allowXmlRpc) {
+                unset($api['pingback.ping']);
+            }
+
+            /** 直接把初始化放到这里 */
+            new IXR_Server($api);
         }
     }
 }

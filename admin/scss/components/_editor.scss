@@ -40,6 +40,8 @@
   background: transparent url(../img/editor.png) no-repeat;
 }
 
+#btn-cancel-preview { display: none }
+
 @media 
 (-webkit-min-device-pixel-ratio: 2), 
 (min-resolution: 192dpi) {
@@ -114,8 +116,8 @@
   img { max-width: 100%; }
   code, pre {
     padding: 2px 4px;
-    background: #F3F3F0;
-    font-size: .92857em;
+    background: #DDD;
+    font-size: 14px;
   }
   code { color: #C13; }
   pre {
@@ -158,8 +160,17 @@
   }
 
   table th {
-    text-align: left;
     background: #EEE;
+  }
+  span.line {
+    display: inline;
+    height: 1px;
+    line-height: 1px;
+    position: absolute;
+  }
+
+  .focus, .focus * {
+    background-color: rgba(255,230,0,0.5) !important;
   }
 }
 
@@ -218,9 +229,6 @@
     border-left: 1px solid #F3F3F0;
     background: #F6F6F3;
     overflow: auto;
-    code, pre {
-      background: #F0F0EC;
-    }
   }
   .submit {
     right: 0;
@@ -260,4 +268,14 @@
   #btn-fullscreen-upload {
     visibility: visible;
   }
+}
+
+.preview {
+  .submit { width: 100%; background: #FFFFDD }
+  #wmd-button-bar, #wmd-preview, #text, #upload-panel, #tab-files, #btn-preview, #btn-fullscreen-upload, #auto-save-message { display: none }
+  .preview-frame { width: 100%; border: 0; padding: 0; margin: 0;
+    background: #fff; z-index: 999; position: absolute; top: 53px; left: 0 }
+
+  .preview-loading { background-image: url(../img/ajax-loader.gif); background-position: center; background-repeat: no-repeat }
+  #btn-cancel-preview { display: inline-block }
 }

@@ -1,6 +1,7 @@
 (function (w) {
     w.Typecho = {
         insertFileToEditor  :   function (file, url, isImage) {},
+        uploadFile: function (file) {},
         editorResize        :   function (id, url) {
             $('#' + id).resizeable({
                 minHeight   :   100,
@@ -12,6 +13,236 @@
         uploadComplete      :   function (file) {}
     };
 })(window);
+
+// 虚拟编辑器
+function scrollableEditor(el, preview) {
+    var styles =  el.css(),
+        lastWidth = el.width(),
+        lastFocus = null,
+        merge = [],
+        rows = [],
+        previewRows = [],
+        css = {display: 'block', 'position': 'absolute', 'left': '-99999px', 'top': '-99999px'},
+        test = $('<div></div>').appendTo(document.body),
+        focused = false;
+
+    for (var k in styles) {
+        if (k.match(/^(direction|font-family|font-size|font-style|font-weight|letter-spacing|line-height|text-align|vertical-align|white-space|word-wrap|word-break|word-spacing)$/i)) {
+            css[k] = styles[k];
+        }
+    }
+
+    test.css(css);
+    test.css('min-height', css['line-height']);
+
+    function reload(input) {
+        var text = el.val(),
+            lines = text.split("\n"),
+            h = 0;
+
+        test.width(el.width());
+        rows = [];
+
+        for (var i = 0; i < lines.length; i ++) {
+            test.text(lines[i]);
+            h += test.height();
+
+            rows.push(h);
+        }
+
+        test.html('');
+        reloadPreview(input);
+    }
+
+    function scroll(inputLine) {
+        var height = el.height(),
+            offset = (el.innerHeight() - height) / 2,
+            scrollTop = el.scrollTop() - offset,
+            previewScrollTop = preview.scrollTop(),
+            percent = 0,
+            scrollPos = 0,
+            current = null;
+
+        // 自动滚动到当前行
+        if (typeof inputLine != 'undefined') {
+            for (var a = 0; a < previewRows.length; a ++) {
+                var item = previewRows[a];
+                
+                if (inputLine >= item[0] && inputLine <= item[1]) {
+                    if (a == previewRows.length - 1 || item[2] < previewScrollTop 
+                        || previewRows[a + 1][2] > previewScrollTop + preview.height()) {
+                        preview.scrollTop(item[2]);
+                    }
+                    break;
+                }
+            }
+            
+            return;
+        }
+
+        for (var i = 0; i < merge.length; i ++) {
+            current = merge[i]; 
+
+            if (scrollTop <= current[2]) {
+                percent = (scrollTop - current[3]) * current[4] / (current[2] - current[3])
+                break;
+            }
+        }
+        
+        if (!current) {
+            return;
+        }
+
+        for (var j = 0; j < previewRows.length; j ++) {
+            var item = previewRows[j];  
+
+            if (current[0] >= item[0] && current[1] <= item[1]) {
+                var nextPos = previewRows[j + 1] ? previewRows[j + 1][2] : preview.get(0).scrollHeight;
+                scrollPos = (i == 0 ? 0 : item[2]) + (nextPos - item[2]) * percent;
+
+                preview.scrollTop(scrollPos);
+                break;
+            }
+        }
+    }
+
+    function scrollPreview() {
+        var height = el.height(),
+            offset = (el.innerHeight() - height) / 2,
+            previewScrollTop = preview.scrollTop(),
+            found = false,
+            current;
+
+        if (previewRows.length <= 0) {
+            return;
+        }
+
+        for (var i = 0; i < previewRows.length; i ++) {
+            var item = previewRows[i];
+
+            if (previewScrollTop < item[2]) {
+                found = true;
+                break;
+            }
+        }
+
+        current = found ? previewRows[i > 0 ? i - 1 : 0] : previewRows[previewRows.length - 1];
+
+        var start = current[0] > 0 ? rows[current[0] - 1] : 0,
+            end = rows[current[1]],
+            nextPos = found ? previewRows[i > 0 ? i : 1][2] : preview.get(0).scrollHeight,
+            percent = (previewScrollTop - current[2]) / (nextPos - current[2]);
+
+        el.scrollTop(start + (end - start) * percent + offset);
+    }
+
+    function reloadPreview(input) {
+        var last = 0;
+        previewRows = [];
+        merge = [];
+
+        $('.line', preview).each(function () {
+            var t = $(this), start = t.data('start'), end = t.data('end'), startOriginal = t.data('start-original'),
+                pos = t.position().top + preview.scrollTop();
+
+            previewRows.push([start, end, pos, this]);
+
+            if (typeof startOriginal != 'undefined') {
+                merge.push([start, startOriginal - 1, rows[startOriginal - 1], last, 0]);
+                merge.push([startOriginal, end, rows[end], rows[startOriginal - 1], 1]);
+            } else {
+                merge.push([start, end, rows[end], last, 1]);
+            }
+            
+            last = rows[end];
+        });
+
+        var inputLine = reloadInput();
+
+        if (input) {
+            if (inputLine !== null) {
+                scroll(inputLine);
+            }
+        } else {
+            scroll();
+        }
+    }
+
+    function getFoucsElement(focus) {
+        var e = $(focus), p = e.parent();
+
+        if (e.length > 0 && e.prop('tagName').match(/^(hr|tr)$/i)) {
+            return e;
+        } else if (p.length > 0 && p.prop('tagName').toLowerCase() == 'div') {
+            return e.next();
+        }
+
+        return p;
+    }
+
+    function reloadInput() {
+        var text = el.val(), end = el.getSelection().start, pos = 0, line = 0, current = null;
+
+        if (!focused) {
+            return current;
+        }
+
+        // 使用高效算法检测当前行号
+        while (true) {
+            pos = text.indexOf("\n", pos);
+
+            if (pos >= 0 && pos < end) {
+                line ++;
+                pos += 1;
+            } else {
+                break;
+            }
+        }
+
+        for (var i = 0; i < previewRows.length; i ++) {
+            var item = previewRows[i];
+
+            if (line >= item[0] && line <= item[1]) {
+                getFoucsElement(lastFocus).removeClass('focus');
+                getFoucsElement(item[3]).addClass('focus');
+                lastFocus = item[3];
+                current = line;
+                break;
+            }
+        }
+
+        return current;
+    }
+
+    // 检测宽度
+    setInterval(function () {
+        if (el.width() != lastWidth) {
+            lastWidth = el.width();
+            el.trigger('resize');
+        }
+    }, 150);
+
+    // 检测输入
+    el.on('touch keypress click', reloadInput);
+    el.on('focus', function () {
+        focused = true;
+    }).on('blur', function () {
+        focused = false;
+        getFoucsElement(lastFocus).removeClass('focus');
+    });
+
+    el.on('resize', reload);
+
+    el.on('DOMMouseScroll mousewheel touchmove', function () {
+        scroll();
+    });
+
+    preview.on('DOMMouseScroll mousewheel touchmove', function () {
+        scrollPreview();
+    });
+
+    return reload;
+}
 
 (function ($) {
     // 下拉菜单插件
@@ -1221,7 +1452,7 @@ jQuery.fn.css = function() {
         'border-right-style','border-bottom-style','border-left-style','position',
         'display','visibility','z-index','overflow-x','overflow-y','white-space',
         'clip','float','clear','cursor','list-style-image','list-style-position',
-        'list-style-type','marker-offset'];
+        'list-style-type','marker-offset', 'word-wrap', 'word-break', 'word-spacing'];
     var len = attr.length, obj = {};
     for (var i = 0; i < len; i++) 
         obj[attr[i]] = jQuery.fn.css2.call(this, attr[i]);

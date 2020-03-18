@@ -42,6 +42,37 @@ class Widget_Security extends Typecho_Widget
     }
 
     /**
+     * 在系统升级的时候进行安全性检查
+     *
+     * @return array
+     */
+    public function systemCheck()
+    {
+        $errors = array();
+
+        // 检查安装文件的安全性
+        $installFile = __TYPECHO_ROOT_DIR__ . '/install.php';
+        if (file_exists($installFile)) {
+            $installFileContents = file_get_contents($installFile);
+
+            if (0 !== strpos($installFileContents,
+                    '<?php if (!file_exists(dirname(__FILE__) . \'/config.inc.php\')): ?>') ||
+                false !== strpos($installFileContents,
+                    '!isset($_GET[\'finish\']) && file_exists(__TYPECHO_ROOT_DIR__ . \'/config.inc.php\') && empty($_SESSION[\'typecho\'])')) {
+                $errors[] = _t('您正在运行一个不安全的安装脚本 <strong>%s</strong>, 请用新版中的对应文件替代或者直接删除它', $installFile);
+            }
+        }
+
+        // 验证入口文件
+        $indexFile = __TYPECHO_ROOT_DIR__ . '/index.php';
+        if (md5_file($indexFile) != 'f4dae7ceb7002cf4f95d380f5ced906b') {
+            $errors[] = _t('当前网站的入口文件 <strong>%s</strong> 与最新版中的不一致, 请更新', $indexFile);
+        }
+
+        return $errors;
+    }
+
+    /**
      * @param $enabled
      */
     public function enable($enabled = true)
@@ -87,7 +118,7 @@ class Widget_Security extends Typecho_Widget
      */
     public function protect()
     {
-        if ($this->enabled && $this->request->get('_') != $this->getToken($this->request->getReferer())) {
+        if ($this->_enabled && $this->request->get('_') != $this->getToken($this->request->getReferer())) {
             $this->response->goBack();
         }
     }
