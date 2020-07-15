@@ -5,6 +5,48 @@
   margin-bottom: -0.5em;
 }
 
+@import "editor/*.png";
+@include all-editor-sprites(true);
+
+@mixin editor-button($name) {
+  &#wmd-#{$name}-button span {
+    @include editor-sprite(editor-#{$name})
+  }
+}
+
+@media 
+(-webkit-min-device-pixel-ratio: 2), 
+(min-resolution: 192dpi) {
+  @import "editor/*@2x.png";
+  @include all-editor-sprites();
+
+  @mixin editor-button-2x($name) {
+    &#wmd-#{$name}-button span {
+      @include editor-sprite(editor-#{$name})
+    }
+  }
+  
+  .wmd-button-row {
+    li {
+      @include editor-button-2x(bold);
+      @include editor-button-2x(italic);
+      @include editor-button-2x(link);
+      @include editor-button-2x(quote);
+      @include editor-button-2x(code);
+      @include editor-button-2x(image);
+      @include editor-button-2x(olist);
+      @include editor-button-2x(ulist);
+      @include editor-button-2x(heading);
+      @include editor-button-2x(hr);
+      @include editor-button-2x(more);
+      @include editor-button-2x(undo);
+      @include editor-button-2x(redo);
+      @include editor-button-2x(fullscreen);
+      @include editor-button-2x(exit-fullscreen);
+    }
+  }
+}
+
 .wmd-button-row {
   list-style: none;
   margin: 0;
@@ -18,7 +60,7 @@
     padding: 3px;
     cursor: pointer;
     vertical-align: middle;
-    @include border-radius(2px);
+    border-radius: 2px;
     &:hover {
       background-color: #E9E9E6;
     }
@@ -30,26 +72,31 @@
       background: #E9E9E6;
       cursor: default;
     }
-  }
-}
+    span {
+      display: block;
+      width: 20px;
+      height: 20px;
+    }
 
-#wmd-button-row span {
-  display: block;
-  width: 20px;
-  height: 20px;
-  background: transparent url(../img/editor.png) no-repeat;
+    @include editor-button(bold)
+    @include editor-button(italic)
+    @include editor-button(link)
+    @include editor-button(quote)
+    @include editor-button(code)
+    @include editor-button(image)
+    @include editor-button(olist)
+    @include editor-button(ulist)
+    @include editor-button(heading)
+    @include editor-button(hr)
+    @include editor-button(more)
+    @include editor-button(undo)
+    @include editor-button(redo)
+    @include editor-button(fullscreen)
+    @include editor-button(exit-fullscreen)
+  }
 }
 
 #btn-cancel-preview { display: none }
-
-@media 
-(-webkit-min-device-pixel-ratio: 2), 
-(min-resolution: 192dpi) {
-  #wmd-button-row span {
-    background-image: url(../img/editor@2x.png);
-    @include background-size(320px auto);
-  }
-}
 
 // 撰写预览切换 tab
 .wmd-edittab {
@@ -112,7 +159,7 @@
   padding: 0 15px;
   word-wrap: break-word;
   overflow: auto;
-  @include border-radius(2px);
+  border-radius: 2px;
   img { max-width: 100%; }
   code, pre {
     padding: 2px 4px;
@@ -176,23 +223,8 @@
 
 /* 上传面板动画效果 */
 @keyframes fullscreen-upload {
-  0%   { right: -280px; }
-  100% { right: -1px; }
-}
-
-@-moz-keyframes fullscreen-upload {
-  0%   { right: -280px; }
-  100% { right: -1px; }
-}
-
-@-webkit-keyframes fullscreen-upload {
-  0%   { right: -280px; }
-  100% { right: -1px; }
-}
-
-@-o-keyframes fullscreen-upload {
-  0%   { right: -280px; }
-  100% { right: -1px; }
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 /* 编辑器全屏 */
@@ -204,8 +236,8 @@
     width: 50%;
     background: #FFF;
     z-index: 999;
-    @include box-sizing(border-box);
-    @include border-radius(0);
+    box-sizing: border-box;
+    border-radius: 0;
   }
   #wmd-button-bar {
     left: 0;
@@ -246,14 +278,11 @@
   #tab-files {
     position: absolute;
     top: 52px;
-    right: -1px;
+    right: 0;
     width: 280px;
     z-index: 1001;
 
     animation: fullscreen-upload 0.5s;
-    -moz-animation: fullscreen-upload 0.5s;
-    -webkit-animation: fullscreen-upload 0.5s;
-    -o-animation: fullscreen-upload 0.5s;
   }
 
   .wmd-edittab,
