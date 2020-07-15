@@ -1,9 +1,9 @@
 #
 # This is free software, lisence use MIT.
 #
-# Copyright (C) 2019 KFERMercer <KFER.Mercer@gmail.com>
+# Copyright (C) 2020 ClayMoreBoy <claymor3.sky@gmail.com>
 #
-# <https://github.com/KFERMercer/OpenWrt-CI>
+# <https://github.com/ClayMoreBoy>
 #
 
 name: 上游源码同步
@@ -19,8 +19,8 @@ on:
 #      - master
 
 # 点赞触发
-  watch:
-    types: [started]
+#  watch:
+#    types: [started]
 
 jobs:
   merge:
